@@ -1,173 +1,157 @@
 /* GitHub Bot Comment Collapser Styles */
+/* Minimal approach: small toggle button outside the timeline item */
 
-/* Toggle header for collapsed comments */
-.gbc-toggle {
+/* ========== Toggle Button (positioned outside container) ========== */
+
+/* Position relative is set via JS on the anchor element (.timeline-comment or .TimelineItem-body) */
+
+.gbc-toggle-btn {
+  position: absolute;
+  right: -32px;
+  /* Vertically center with header (~40px tall, button is 24px) */
+  top: 8px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: var(--bgColor-muted, #f6f8fa);
-  border: 1px solid var(--borderColor-default, #d0d7de);
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--fgColor-muted, #656d76);
-  user-select: none;
-  transition: background-color 0.15s ease;
-}
-
-.gbc-toggle:hover {
-  background: var(--bgColor-neutral-muted, #eaeef2);
-}
-
-/* All items in toggle should align to baseline */
-.gbc-toggle > span {
-  display: inline-flex;
-  align-items: center;
-  line-height: 1;
-}
-
-.gbc-icon {
-  font-size: 10px;
-  width: 10px;
-  height: 10px;
-  display: inline-flex;
-  align-items: center;
   justify-content: center;
-  color: var(--fgColor-muted, #656d76);
-  transition: transform 0.15s ease;
-}
-
-.gbc-type-icon {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  color: var(--fgColor-muted, #656d76);
-}
-
-.gbc-label {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
   background: var(--bgColor-neutral-muted, #eaeef2);
-  border: 1px solid var(--borderColor-default, #d0d7de);
-  border-radius: 2em;
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1.4;
   color: var(--fgColor-muted, #656d76);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  z-index: 10;
 }
 
-/* Review label - purple tint */
-.gbc-label-review {
+/* TimelineItem-body has different padding, adjust accordingly */
+.TimelineItem-body > .gbc-toggle-btn {
+  top: 4px;
+}
+
+.gbc-toggle-btn:hover {
+  background: var(--bgColor-accent-muted, #ddf4ff);
+  color: var(--fgColor-accent, #0969da);
+}
+
+.gbc-toggle-btn:active {
+  transform: scale(0.95);
+}
+
+/* Review type - purple accent on hover */
+.gbc-toggle-btn[data-type="review"]:hover {
   background: var(--bgColor-done-muted, #fbefff);
-  border-color: var(--borderColor-done-muted, #c297ff66);
   color: var(--fgColor-done, #8250df);
 }
 
-/* Comment label - default gray */
-.gbc-label-comment {
-  background: var(--bgColor-neutral-muted, #eaeef2);
-  border-color: var(--borderColor-default, #d0d7de);
-  color: var(--fgColor-muted, #656d76);
+.gbc-toggle-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
-.gbc-author {
-  font-weight: 600;
-  color: var(--fgColor-default, #1f2328);
-}
+/* ========== Collapsed State ========== */
 
-.gbc-meta {
-  color: var(--fgColor-muted, #656d76);
-}
+/* 
+ * ONLY hide the comment/review BODY content.
+ * Do NOT touch the header - leave it exactly as GitHub renders it.
+ */
 
-.gbc-time {
-  color: var(--fgColor-muted, #656d76);
-  font-size: 11px;
-}
-
-.gbc-hint {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--fgColor-muted, #656d76);
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.gbc-toggle:hover .gbc-hint {
-  opacity: 1;
-}
-
-/* Collapsed state - hide comment content */
-.gbc-collapsed > *:not(.gbc-toggle) {
+/* Hide comment body content */
+.gbc-collapsed .comment-body,
+.gbc-collapsed .js-comment-body,
+.gbc-collapsed .edit-comment-hide,
+.gbc-collapsed .review-comment-body,
+.gbc-collapsed [data-testid="markdown-body"] {
   display: none !important;
 }
 
-.gbc-collapsed > .gbc-toggle {
-  display: flex !important;
-  margin: 8px 0;
+/* Hide review body content */
+.gbc-collapsed .js-review-body,
+.gbc-collapsed .review-thread-reply,
+.gbc-collapsed .comment-reactions,
+.gbc-collapsed .review-summary-body,
+.gbc-collapsed .js-pull-request-review-body {
+  display: none !important;
 }
 
-/* Expanded state - show toggle at top */
-[data-gbc-processed='true']:not(.gbc-collapsed) > .gbc-toggle {
-  margin-bottom: 0;
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-  border-bottom: none;
+/* Hide file review lists in collapsed reviews */
+.gbc-collapsed .js-reviewed-files-container,
+.gbc-collapsed .reviewed-files,
+.gbc-collapsed .file-tree,
+.gbc-collapsed .js-diff-progressive-container,
+.gbc-collapsed .js-timeline-progressive-loader,
+.gbc-collapsed .diffbar,
+.gbc-collapsed .file-header,
+.gbc-collapsed .file,
+.gbc-collapsed [data-file-path],
+.gbc-collapsed .js-resolvable-timeline-thread-container,
+.gbc-collapsed .outdated-comment,
+.gbc-collapsed .show-outdated-button,
+.gbc-collapsed details.outdated-comment {
+  display: none !important;
 }
 
-[data-gbc-processed='true']:not(.gbc-collapsed) > .gbc-toggle + * {
-  border-top-left-radius: 0 !important;
-  border-top-right-radius: 0 !important;
+/* Hide markdown body but be specific to avoid hiding header elements */
+.gbc-collapsed .timeline-comment-body .markdown-body,
+.gbc-collapsed .js-comment-container > .markdown-body {
+  display: none !important;
 }
 
-/* Dark mode support */
+/* ========== Pill-like appearance when collapsed ========== */
+
+/* Remove all bottom spacing */
+.gbc-collapsed.timeline-comment-group {
+  padding-bottom: 0 !important;
+  margin-bottom: 16px !important;
+}
+
+.gbc-collapsed .timeline-comment {
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.gbc-collapsed .TimelineItem-body {
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Round the bottom corners of the header to make it pill-like */
+.gbc-collapsed .timeline-comment-header,
+.gbc-collapsed .TimelineItem-header {
+  border-bottom-left-radius: 6px !important;
+  border-bottom-right-radius: 6px !important;
+  border-bottom: 1px solid var(--borderColor-default, #d0d7de) !important;
+}
+
+/* Round the comment box itself */
+.gbc-collapsed .timeline-comment {
+  border-bottom-left-radius: 6px !important;
+  border-bottom-right-radius: 6px !important;
+}
+
+/* ========== Dark Mode ========== */
+
 @media (prefers-color-scheme: dark) {
-  .gbc-toggle {
-    background: var(--bgColor-muted, #161b22);
-    border-color: var(--borderColor-default, #30363d);
+  .gbc-toggle-btn {
+    background: var(--bgColor-neutral-muted, #21262d);
     color: var(--fgColor-muted, #8b949e);
   }
 
-  .gbc-toggle:hover {
-    background: var(--bgColor-neutral-muted, #21262d);
+  .gbc-toggle-btn:hover {
+    background: var(--bgColor-accent-muted, #388bfd26);
+    color: var(--fgColor-accent, #58a6ff);
   }
 
-  .gbc-label {
-    background: var(--bgColor-neutral-muted, #21262d);
-    border-color: var(--borderColor-default, #30363d);
-    color: var(--fgColor-muted, #8b949e);
-  }
-
-  .gbc-label-review {
-    background: var(--bgColor-done-muted, #2d1f3d);
-    border-color: var(--borderColor-done-muted, #a371f766);
+  .gbc-toggle-btn[data-type="review"]:hover {
+    background: var(--bgColor-done-muted, #a371f726);
     color: var(--fgColor-done, #a371f7);
   }
 
-  .gbc-label-comment {
-    background: var(--bgColor-neutral-muted, #21262d);
-    border-color: var(--borderColor-default, #30363d);
-    color: var(--fgColor-muted, #8b949e);
+  .gbc-collapsed .timeline-comment-header,
+  .gbc-collapsed .TimelineItem-header {
+    border-bottom-color: var(--borderColor-default, #30363d) !important;
   }
-
-  .gbc-type-icon {
-    color: var(--fgColor-muted, #8b949e);
-  }
-
-  .gbc-author {
-    color: var(--fgColor-default, #e6edf3);
-  }
-}
-
-/* Animation for expand/collapse */
-[data-gbc-processed='true'] {
-  transition: max-height 0.2s ease;
-}
-
-/* Ensure proper stacking */
-.gbc-toggle {
-  position: relative;
-  z-index: 1;
 }
 
 /* ========== Sidebar Widget ========== */

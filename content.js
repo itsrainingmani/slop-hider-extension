@@ -5,14 +5,22 @@
   'use strict';
 
   const COLLAPSED_CLASS = 'gbc-collapsed';
-  const TOGGLE_CLASS = 'gbc-toggle';
+  const TOGGLE_BTN_CLASS = 'gbc-toggle-btn';
   const PROCESSED_ATTR = 'data-gbc-processed';
 
   // Track global state: 'collapsed' | 'expanded' | 'mixed'
-  // New items will inherit this state
   let globalState = 'collapsed';
 
-  // Check if this is a top-level timeline comment (not nested in other comments)
+  // SVG icons for collapse/expand states
+  const ICONS = {
+    collapsed: `<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+      <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/>
+    </svg>`,
+    expanded: `<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+      <path d="M12.78 5.22a.749.749 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.06 0L3.22 6.28a.749.749 0 1 1 1.06-1.06L8 8.94l3.72-3.72a.749.749 0 0 1 1.06 0Z"/>
+    </svg>`,
+  };
+
   function isTopLevelComment(container) {
     const parent = container.parentElement;
     if (!parent) return false;
@@ -46,7 +54,6 @@
     return true;
   }
 
-  // Check if an element contains a bot badge
   function isBotComment(container) {
     const labels = container.querySelectorAll(
       '.Label, .AppBadge, [class*="Label"], span[class*="badge"], .author-badge'
@@ -77,7 +84,6 @@
     return false;
   }
 
-  // Detect if the comment is a review or a regular comment
   function getCommentType(container) {
     const isReview =
       container.classList.contains('js-pull-request-review') ||
@@ -90,80 +96,48 @@
     return isReview ? 'review' : 'comment';
   }
 
-  // SVG icons for different comment types
-  const ICONS = {
-    comment: `<svg class="gbc-type-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-      <path d="M1 2.75C1 1.784 1.784 1 2.75 1h10.5c.966 0 1.75.784 1.75 1.75v7.5A1.75 1.75 0 0 1 13.25 12H9.06l-2.573 2.573A1.458 1.458 0 0 1 4 13.543V12H2.75A1.75 1.75 0 0 1 1 10.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h4.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/>
-    </svg>`,
-    review: `<svg class="gbc-type-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-      <path d="M8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 0 1 0 1.798c-.45.678-1.367 1.932-2.637 3.023C11.67 13.008 9.981 14 8 14c-1.981 0-3.671-.992-4.933-2.078C1.797 10.83.88 9.576.43 8.898a1.62 1.62 0 0 1 0-1.798c.45-.677 1.367-1.931 2.637-3.022C4.33 2.992 6.019 2 8 2ZM1.679 7.932a.12.12 0 0 0 0 .136c.411.622 1.241 1.75 2.366 2.717C5.176 11.758 6.527 12.5 8 12.5c1.473 0 2.825-.742 3.955-1.715 1.124-.967 1.954-2.096 2.366-2.717a.12.12 0 0 0 0-.136c-.412-.621-1.242-1.75-2.366-2.717C10.824 4.242 9.473 3.5 8 3.5c-1.473 0-2.824.742-3.955 1.715-1.124.967-1.954 2.096-2.366 2.717ZM8 10a2 2 0 1 1-.001-3.999A2 2 0 0 1 8 10Z"/>
-    </svg>`,
-  };
-
-  // Create the collapsed header showing bot info
-  function createCollapsedHeader(container) {
-    const header = document.createElement('div');
-    header.className = `${TOGGLE_CLASS}`;
-
-    const authorEl = container.querySelector(
-      '.author, .js-issue-comment-username, [data-testid="author-link"]'
-    );
-    const author = authorEl?.textContent?.trim() || 'Bot';
-
-    const timeEl = container.querySelector('relative-time, time');
-    const time = timeEl?.getAttribute('title') || timeEl?.textContent || '';
-
-    const bodyEl = container.querySelector(
-      '.comment-body, .js-comment-body, [data-testid="markdown-body"], .markdown-body'
-    );
-    const lineCount = bodyEl ? bodyEl.innerText.split('\n').filter((l) => l.trim()).length : 0;
-
+  // Create the small toggle button positioned outside the container
+  function createToggleButton(container, isCollapsed) {
+    const btn = document.createElement('button');
+    btn.className = TOGGLE_BTN_CLASS;
+    btn.type = 'button';
+    btn.setAttribute('aria-label', isCollapsed ? 'Expand bot comment' : 'Collapse bot comment');
+    
     const commentType = getCommentType(container);
-    const typeIcon = ICONS[commentType];
-    const typeLabel = commentType === 'review' ? 'Review' : 'Comment';
-    const labelClass = commentType === 'review' ? 'gbc-label-review' : 'gbc-label-comment';
+    btn.dataset.type = commentType;
+    
+    updateToggleButton(btn, isCollapsed);
 
-    header.innerHTML = `
-      <span class="gbc-icon">&#9654;</span>
-      ${typeIcon}
-      <span class="gbc-label ${labelClass}">Bot ${typeLabel}</span>
-      <span class="gbc-author">${escapeHtml(author)}</span>
-      <span class="gbc-meta">${lineCount} lines</span>
-      ${time ? `<span class="gbc-time">${escapeHtml(time)}</span>` : ''}
-      <span class="gbc-hint">Click to expand</span>
-    `;
-
-    header.addEventListener('click', (e) => {
+    btn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      toggleComment(container, header);
+      toggleComment(container, btn);
     });
 
-    return header;
+    return btn;
   }
 
-  function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+  function updateToggleButton(btn, isCollapsed) {
+    btn.innerHTML = isCollapsed ? ICONS.collapsed : ICONS.expanded;
+    btn.setAttribute('aria-label', isCollapsed ? 'Expand bot comment' : 'Collapse bot comment');
+    btn.title = isCollapsed ? 'Expand' : 'Collapse';
   }
 
-  function toggleComment(container, header) {
+  function toggleComment(container, btn) {
     const isCollapsed = container.classList.toggle(COLLAPSED_CLASS);
-    const icon = header.querySelector('.gbc-icon');
-    const hint = header.querySelector('.gbc-hint');
-
-    if (isCollapsed) {
-      icon.innerHTML = '&#9654;';
-      hint.textContent = 'Click to expand';
-    } else {
-      icon.innerHTML = '&#9660;';
-      hint.textContent = 'Click to collapse';
-    }
-
-    // Individual toggle sets state to mixed
+    updateToggleButton(btn, isCollapsed);
     globalState = 'mixed';
     updateSidebarWidget();
+  }
+
+  // Find the best element to attach the toggle button to
+  // This should be the element that contains the header, so positioning is consistent
+  function findButtonAnchor(container) {
+    // Prefer the comment box or timeline body - these have consistent structure
+    return container.querySelector(
+      '.timeline-comment, ' +
+      '.TimelineItem-body'
+    ) || container;
   }
 
   function processComment(container) {
@@ -173,20 +147,20 @@
     if (!isTopLevelComment(container)) return;
     if (!isBotComment(container)) return;
 
-    const header = createCollapsedHeader(container);
-    container.insertBefore(header, container.firstChild);
-
-    // Apply current global state to new comments
+    // Determine initial state based on global preference
     const shouldCollapse = globalState !== 'expanded';
+
+    // Create toggle button
+    const btn = createToggleButton(container, shouldCollapse);
     
+    // Find the best anchor element and attach button there
+    const anchor = findButtonAnchor(container);
+    anchor.style.position = 'relative';
+    anchor.appendChild(btn);
+
+    // Apply initial state
     if (shouldCollapse) {
       container.classList.add(COLLAPSED_CLASS);
-    } else {
-      // Set expanded state on the header
-      const icon = header.querySelector('.gbc-icon');
-      const hint = header.querySelector('.gbc-hint');
-      if (icon) icon.innerHTML = '&#9660;';
-      if (hint) hint.textContent = 'Click to collapse';
     }
   }
 
@@ -228,15 +202,11 @@
 
   function collapseAll() {
     globalState = 'collapsed';
-    document.querySelectorAll(`.${TOGGLE_CLASS}`).forEach((header) => {
-      const container = header.parentElement;
-      if (container && !container.classList.contains(COLLAPSED_CLASS)) {
-        // Directly manipulate without calling toggleComment to avoid setting 'mixed'
+    document.querySelectorAll(`[${PROCESSED_ATTR}="true"]`).forEach((container) => {
+      const btn = container.querySelector(`.${TOGGLE_BTN_CLASS}`);
+      if (btn && !container.classList.contains(COLLAPSED_CLASS)) {
         container.classList.add(COLLAPSED_CLASS);
-        const icon = header.querySelector('.gbc-icon');
-        const hint = header.querySelector('.gbc-hint');
-        if (icon) icon.innerHTML = '&#9654;';
-        if (hint) hint.textContent = 'Click to expand';
+        updateToggleButton(btn, true);
       }
     });
     updateSidebarWidget();
@@ -245,25 +215,21 @@
   function expandAll() {
     globalState = 'expanded';
     document.querySelectorAll(`[${PROCESSED_ATTR}="true"].${COLLAPSED_CLASS}`).forEach((container) => {
-      const header = container.querySelector(`.${TOGGLE_CLASS}`);
-      if (header) {
-        // Directly manipulate without calling toggleComment to avoid setting 'mixed'
+      const btn = container.querySelector(`.${TOGGLE_BTN_CLASS}`);
+      if (btn) {
         container.classList.remove(COLLAPSED_CLASS);
-        const icon = header.querySelector('.gbc-icon');
-        const hint = header.querySelector('.gbc-hint');
-        if (icon) icon.innerHTML = '&#9660;';
-        if (hint) hint.textContent = 'Click to collapse';
+        updateToggleButton(btn, false);
       }
     });
     updateSidebarWidget();
   }
 
   function getBotCommentCount() {
-    return document.querySelectorAll(`.${TOGGLE_CLASS}`).length;
+    return document.querySelectorAll(`.${TOGGLE_BTN_CLASS}`).length;
   }
 
   function getCollapsedCount() {
-    return document.querySelectorAll(`.${COLLAPSED_CLASS} .${TOGGLE_CLASS}`).length;
+    return document.querySelectorAll(`.${COLLAPSED_CLASS} .${TOGGLE_BTN_CLASS}`).length;
   }
 
   function updateSidebarWidget() {
