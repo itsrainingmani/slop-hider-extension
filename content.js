@@ -123,23 +123,16 @@
     return isReview ? 'review' : 'comment';
   }
 
-  // Create the small toggle button positioned outside the container
+  // Create the toggle button (no click handler - uses event delegation)
   function createToggleButton(container, isCollapsed) {
     const btn = document.createElement('button');
     btn.className = TOGGLE_BTN_CLASS;
     btn.type = 'button';
-    btn.setAttribute('aria-label', isCollapsed ? 'Show bot comment' : 'Hide bot comment');
     
     const commentType = getCommentType(container);
     btn.dataset.type = commentType;
     
     updateToggleButton(btn, isCollapsed);
-
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      toggleComment(container, btn);
-    });
 
     return btn;
   }
@@ -150,11 +143,24 @@
     btn.title = isCollapsed ? 'Show' : 'Hide';
   }
 
-  function toggleComment(container, btn) {
-    const isCollapsed = container.classList.toggle(COLLAPSED_CLASS);
-    updateToggleButton(btn, isCollapsed);
-    globalState = 'mixed';
-    updateSidebarWidget();
+  // Single delegated click handler for all toggle buttons
+  // Uses capture phase to ensure we get the event before GitHub's handlers
+  function setupToggleListener() {
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest(`.${TOGGLE_BTN_CLASS}`);
+      if (!btn) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const container = findOutermostContainer(btn);
+      if (!container) return;
+
+      const isCollapsed = container.classList.toggle(COLLAPSED_CLASS);
+      updateToggleButton(btn, isCollapsed);
+      globalState = 'mixed';
+      updateSidebarWidget();
+    }, true);
   }
 
   // Find the header element to attach the toggle button to
@@ -258,11 +264,23 @@
     });
   }
 
+  // Helper: find the outermost processed ancestor for a button
+  function findOutermostContainer(btn) {
+    let container = btn.closest(`[${PROCESSED_ATTR}]`);
+    while (container) {
+      const parent = container.parentElement?.closest(`[${PROCESSED_ATTR}]`);
+      if (!parent) break;
+      container = parent;
+    }
+    return container;
+  }
+
   function collapseAll() {
     globalState = 'collapsed';
-    document.querySelectorAll(`[${PROCESSED_ATTR}="true"]`).forEach((container) => {
-      const btn = container.querySelector(`.${TOGGLE_BTN_CLASS}`);
-      if (btn && !container.classList.contains(COLLAPSED_CLASS)) {
+    // Iterate over buttons, find their outermost container
+    document.querySelectorAll(`.${TOGGLE_BTN_CLASS}`).forEach((btn) => {
+      const container = findOutermostContainer(btn);
+      if (container) {
         container.classList.add(COLLAPSED_CLASS);
         updateToggleButton(btn, true);
       }
@@ -272,9 +290,10 @@
 
   function expandAll() {
     globalState = 'expanded';
-    document.querySelectorAll(`[${PROCESSED_ATTR}="true"].${COLLAPSED_CLASS}`).forEach((container) => {
-      const btn = container.querySelector(`.${TOGGLE_BTN_CLASS}`);
-      if (btn) {
+    // Iterate over buttons, find their outermost container
+    document.querySelectorAll(`.${TOGGLE_BTN_CLASS}`).forEach((btn) => {
+      const container = findOutermostContainer(btn);
+      if (container) {
         container.classList.remove(COLLAPSED_CLASS);
         updateToggleButton(btn, false);
       }
@@ -381,6 +400,9 @@
   };
 
   function init() {
+    // Set up single delegated click handler for all toggle buttons
+    setupToggleListener();
+    
     processAllComments();
     setupObserver();
     setTimeout(createSidebarWidget, 500);
