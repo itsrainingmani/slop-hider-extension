@@ -1,15 +1,16 @@
-# GitHub Bot Comment Collapser
+# GitHub PR Slop Hider
 
-A browser extension that automatically collapses comments from bots on GitHub PRs and issues.
+A browser extension that automatically hides comments from bots on GitHub PRs and issues, reducing AI slop noise.
 
 ## Features
 
-- Automatically detects and collapses bot comments
-- Minimal UI - just a colored left border indicator
-- Click GitHub's native header to expand/collapse
-- Blue border = comment, Purple border = review
-- Sidebar widget for bulk expand/collapse
-- Supports GitHub's dark mode
+- Automatically detects and hides bot comments on page load
+- Circular eye toggle button positioned to the right of each bot comment header
+- Eye icons indicate action: open eye = click to show, closed eye = click to hide
+- Sidebar widget showing "X hidden, Y shown" with bulk Hide All / Show All buttons
+- Only collapses substantial content (comments, reviews) - skips simple actions like "added a label"
+- Supports dynamically loaded comments ("Load more...")
+- Dark mode support
 
 ## Installation
 
@@ -28,26 +29,29 @@ A browser extension that automatically collapses comments from bots on GitHub PR
 
 ## Usage
 
-Bot comments are automatically collapsed when you visit a GitHub PR or issue page.
+Bot comments are automatically hidden when you visit a GitHub PR or issue page.
 
-### Visual Indicators
+### Toggle Button
 
-- **Blue left border** = Bot comment
-- **Purple left border** = Bot review
-- **Faded (60% opacity)** = Collapsed
-- **Full opacity + stronger border** = Expanded
+A circular button with an eye icon appears to the right of each bot comment header:
+- **Open eye** = Content is hidden, click to show
+- **Closed eye** = Content is visible, click to hide
+- Hover color: blue for comments, purple for reviews
 
-### Interaction
+### Sidebar Widget
 
-- **Click** the comment header to expand/collapse
-- Use the **sidebar widget** for bulk actions
+Located at the top of the PR sidebar:
+- Shows count of bot comments found
+- Displays "X hidden, Y shown" status
+- **Hide All** / **Show All** buttons for bulk actions
 
 ### Console Commands
 
 ```javascript
-githubBotCollapser.collapseAll();    // Collapse all
-githubBotCollapser.expandAll();      // Expand all
-githubBotCollapser.processAllComments(); // Re-scan page
+githubBotCollapser.collapseAll();        // Hide all bot comments
+githubBotCollapser.expandAll();          // Show all bot comments
+githubBotCollapser.processAllComments(); // Re-scan page for new comments
+githubBotCollapser.updateSidebarWidget(); // Refresh sidebar counts
 ```
 
 ## How it detects bots

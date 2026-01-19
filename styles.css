@@ -3,45 +3,73 @@
 
 /* ========== Toggle Button (positioned outside container) ========== */
 
-/* Position relative is set via JS on the anchor element (.timeline-comment or .TimelineItem-body) */
+/* Position relative is set via JS on the header anchor element */
 
 .gbc-toggle-btn {
   position: absolute;
-  right: -32px;
-  /* Vertically center with header (~40px tall, button is 24px) */
-  top: 8px;
+  right: -40px;
+  /* Vertically center within the header */
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   padding: 0;
-  border: none;
-  border-radius: 6px;
-  background: var(--bgColor-neutral-muted, #eaeef2);
+  border: 1px solid var(--borderColor-default, #d0d7de);
+  border-radius: 50%;
+  background: var(--bgColor-default, #ffffff);
   color: var(--fgColor-muted, #656d76);
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   z-index: 10;
 }
 
-/* TimelineItem-body has different padding, adjust accordingly */
+/* Ensure headers can show the toggle button outside their bounds */
+.timeline-comment-header,
+.TimelineItem-header,
+.review-comment-header,
+.review-summary-header {
+  overflow: visible !important;
+}
+
+/* Specific adjustments for different header types */
+.timeline-comment-header > .gbc-toggle-btn {
+  right: -40px;
+}
+
+.TimelineItem-header > .gbc-toggle-btn {
+  right: -40px;
+}
+
+/* Fallback containers that aren't headers - use fixed offset */
+.timeline-comment > .gbc-toggle-btn,
 .TimelineItem-body > .gbc-toggle-btn {
-  top: 4px;
+  top: 8px;
+  transform: none;
 }
 
 .gbc-toggle-btn:hover {
   background: var(--bgColor-accent-muted, #ddf4ff);
+  border-color: var(--borderColor-accent-muted, #54aeff66);
   color: var(--fgColor-accent, #0969da);
 }
 
 .gbc-toggle-btn:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+/* Fallback containers need different active transform */
+.timeline-comment > .gbc-toggle-btn:active,
+.TimelineItem-body > .gbc-toggle-btn:active {
   transform: scale(0.95);
 }
 
 /* Review type - purple accent on hover */
 .gbc-toggle-btn[data-type="review"]:hover {
   background: var(--bgColor-done-muted, #fbefff);
+  border-color: var(--borderColor-done-muted, #a371f766);
   color: var(--fgColor-done, #8250df);
 }
 
@@ -134,17 +162,20 @@
 
 @media (prefers-color-scheme: dark) {
   .gbc-toggle-btn {
-    background: var(--bgColor-neutral-muted, #21262d);
+    background: var(--bgColor-default, #0d1117);
+    border-color: var(--borderColor-default, #30363d);
     color: var(--fgColor-muted, #8b949e);
   }
 
   .gbc-toggle-btn:hover {
     background: var(--bgColor-accent-muted, #388bfd26);
+    border-color: var(--borderColor-accent-muted, #388bfd66);
     color: var(--fgColor-accent, #58a6ff);
   }
 
   .gbc-toggle-btn[data-type="review"]:hover {
     background: var(--bgColor-done-muted, #a371f726);
+    border-color: var(--borderColor-done-muted, #a371f766);
     color: var(--fgColor-done, #a371f7);
   }
 
@@ -157,11 +188,11 @@
 /* ========== Sidebar Widget ========== */
 
 .gbc-sidebar-widget {
-  padding: 16px;
-  margin-bottom: 16px;
-  background: var(--bgColor-muted, #f6f8fa);
-  border: 1px solid var(--borderColor-default, #d0d7de);
-  border-radius: 6px;
+  padding-top: 0;
+  padding-bottom: 16px;
+  margin-top: 16px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--borderColor-muted, #d1d9e0b3);
 }
 
 .gbc-sidebar-header {
@@ -229,6 +260,7 @@
 }
 
 .gbc-btn-collapse {
+  /* "Hide All" button styling */
   background: var(--bgColor-accent-muted, #ddf4ff);
   border-color: var(--borderColor-accent-muted, #54aeff66);
   color: var(--fgColor-accent, #0969da);
@@ -242,8 +274,7 @@
 /* Dark mode for sidebar */
 @media (prefers-color-scheme: dark) {
   .gbc-sidebar-widget {
-    background: var(--bgColor-muted, #161b22);
-    border-color: var(--borderColor-default, #30363d);
+    border-bottom-color: var(--borderColor-muted, #3d444db3);
   }
 
   .gbc-sidebar-header {
@@ -266,6 +297,7 @@
   }
 
   .gbc-btn-collapse {
+    /* "Hide All" button styling (dark mode) */
     background: var(--bgColor-accent-muted, #388bfd26);
     border-color: var(--borderColor-accent-muted, #388bfd66);
     color: var(--fgColor-accent, #58a6ff);

@@ -11,13 +11,15 @@
   // Track global state: 'collapsed' | 'expanded' | 'mixed'
   let globalState = 'collapsed';
 
-  // SVG icons for collapse/expand states
+  // SVG icons - open eye = content hidden (click to show), closed eye = content shown (click to hide)
   const ICONS = {
+    // Eye open - content is hidden, click to show
     collapsed: `<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-      <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/>
+      <path d="M8 2c-3.636 0-6.034 2.727-7.148 4.308a4.22 4.22 0 0 0 0 3.384C1.966 11.273 4.364 14 8 14s6.034-2.727 7.148-4.308a4.22 4.22 0 0 0 0-3.384C14.034 4.727 11.636 2 8 2ZM8 5a3 3 0 1 1 0 6 3 3 0 0 1 0-6Zm0 1.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"/>
     </svg>`,
+    // Eye closed - content is shown, click to hide
     expanded: `<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-      <path d="M12.78 5.22a.749.749 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.06 0L3.22 6.28a.749.749 0 1 1 1.06-1.06L8 8.94l3.72-3.72a.749.749 0 0 1 1.06 0Z"/>
+      <path d="M.143 2.31a.75.75 0 0 1 1.047-.167l14.5 10.5a.75.75 0 1 1-.88 1.214l-2.248-1.628C11.346 13.19 9.792 14 8 14c-3.636 0-6.034-2.727-7.148-4.308a4.22 4.22 0 0 1 0-3.384c.39-.553.848-1.095 1.36-1.594L.31 3.357a.75.75 0 0 1-.167-1.047ZM5.09 7.25A3 3 0 0 0 8 11a2.99 2.99 0 0 0 1.66-.5l-.973-.704A1.5 1.5 0 0 1 6.5 8c0-.065.004-.129.012-.192L5.09 7.25Zm6.148 2.664 1.667 1.208c.388-.363.73-.752 1.022-1.138a2.72 2.72 0 0 0 0-1.968C13.056 6.727 10.636 4 8 4a5.6 5.6 0 0 0-1.876.324l1.348.976A3 3 0 0 1 11 8c0 .716-.252 1.373-.672 1.888l.91.026Z"/>
     </svg>`,
   };
 
@@ -84,6 +86,31 @@
     return false;
   }
 
+  // Check if the timeline item has substantial content worth collapsing
+  // (comments, reviews, etc. - NOT simple actions like "added a label")
+  function hasCollapsibleContent(container) {
+    // Must have a comment body, review body, or similar content
+    const hasBody = container.querySelector(
+      '.comment-body, ' +
+      '.js-comment-body, ' +
+      '.markdown-body, ' +
+      '.review-comment-body, ' +
+      '.js-review-body, ' +
+      '.review-summary-body, ' +
+      '.js-pull-request-review-body, ' +
+      '[data-testid="markdown-body"]'
+    );
+
+    // Or it's a review with file changes
+    const hasReviewContent = container.querySelector(
+      '.js-reviewed-files-container, ' +
+      '[id^="pullrequestreview"], ' +
+      '.js-pull-request-review'
+    );
+
+    return !!(hasBody || hasReviewContent);
+  }
+
   function getCommentType(container) {
     const isReview =
       container.classList.contains('js-pull-request-review') ||
@@ -101,7 +128,7 @@
     const btn = document.createElement('button');
     btn.className = TOGGLE_BTN_CLASS;
     btn.type = 'button';
-    btn.setAttribute('aria-label', isCollapsed ? 'Expand bot comment' : 'Collapse bot comment');
+    btn.setAttribute('aria-label', isCollapsed ? 'Show bot comment' : 'Hide bot comment');
     
     const commentType = getCommentType(container);
     btn.dataset.type = commentType;
@@ -119,8 +146,8 @@
 
   function updateToggleButton(btn, isCollapsed) {
     btn.innerHTML = isCollapsed ? ICONS.collapsed : ICONS.expanded;
-    btn.setAttribute('aria-label', isCollapsed ? 'Expand bot comment' : 'Collapse bot comment');
-    btn.title = isCollapsed ? 'Expand' : 'Collapse';
+    btn.setAttribute('aria-label', isCollapsed ? 'Show bot comment' : 'Hide bot comment');
+    btn.title = isCollapsed ? 'Show' : 'Hide';
   }
 
   function toggleComment(container, btn) {
@@ -130,14 +157,44 @@
     updateSidebarWidget();
   }
 
-  // Find the best element to attach the toggle button to
-  // This should be the element that contains the header, so positioning is consistent
-  function findButtonAnchor(container) {
-    // Prefer the comment box or timeline body - these have consistent structure
-    return container.querySelector(
-      '.timeline-comment, ' +
-      '.TimelineItem-body'
-    ) || container;
+  // Find the header element to attach the toggle button to
+  // The button should always appear to the right of the header that contains collapsible content
+  function findHeaderAnchor(container) {
+    // Look for the most specific header that precedes actual content
+    // Priority: innermost comment header > review header > fallback
+    
+    // For standard comments with a header bar
+    const timelineCommentHeader = container.querySelector('.timeline-comment-header');
+    if (timelineCommentHeader) {
+      return timelineCommentHeader;
+    }
+    
+    // For TimelineItem style (newer GitHub UI)
+    const timelineItemHeader = container.querySelector('.TimelineItem-header');
+    if (timelineItemHeader) {
+      return timelineItemHeader;
+    }
+    
+    // For review comments - find the header within the comment box
+    const reviewHeader = container.querySelector('.review-comment-header, .review-summary-header');
+    if (reviewHeader) {
+      return reviewHeader;
+    }
+    
+    // Fallback: look for any header-like element with author info
+    const authorHeader = container.querySelector('[class*="comment-header"], [class*="Header"]');
+    if (authorHeader) {
+      return authorHeader;
+    }
+    
+    // Last resort: the container's first child that looks like a header
+    // (usually contains avatar + author name + timestamp)
+    const firstChild = container.querySelector('.timeline-comment, .TimelineItem-body');
+    if (firstChild) {
+      return firstChild;
+    }
+    
+    return container;
   }
 
   function processComment(container) {
@@ -146,6 +203,7 @@
 
     if (!isTopLevelComment(container)) return;
     if (!isBotComment(container)) return;
+    if (!hasCollapsibleContent(container)) return; // Skip simple actions like "added a label"
 
     // Determine initial state based on global preference
     const shouldCollapse = globalState !== 'expanded';
@@ -153,10 +211,10 @@
     // Create toggle button
     const btn = createToggleButton(container, shouldCollapse);
     
-    // Find the best anchor element and attach button there
-    const anchor = findButtonAnchor(container);
-    anchor.style.position = 'relative';
-    anchor.appendChild(btn);
+    // Attach button to the header element so it appears to the right of the header
+    const headerAnchor = findHeaderAnchor(container);
+    headerAnchor.style.position = 'relative';
+    headerAnchor.appendChild(btn);
 
     // Apply initial state
     if (shouldCollapse) {
@@ -237,19 +295,19 @@
     if (!widget) return;
 
     const total = getBotCommentCount();
-    const collapsed = getCollapsedCount();
-    const expanded = total - collapsed;
+    const hidden = getCollapsedCount();
+    const shown = total - hidden;
 
     const countEl = widget.querySelector('.gbc-sidebar-count');
     if (countEl) countEl.textContent = total;
 
     const statusEl = widget.querySelector('.gbc-sidebar-status');
-    if (statusEl) statusEl.textContent = `${collapsed} collapsed, ${expanded} expanded`;
+    if (statusEl) statusEl.textContent = `${hidden} hidden, ${shown} shown`;
 
-    const collapseBtn = widget.querySelector('.gbc-btn-collapse');
-    const expandBtn = widget.querySelector('.gbc-btn-expand');
-    if (collapseBtn) collapseBtn.disabled = collapsed === total;
-    if (expandBtn) expandBtn.disabled = expanded === total;
+    const hideBtn = widget.querySelector('.gbc-btn-collapse');
+    const showBtn = widget.querySelector('.gbc-btn-expand');
+    if (hideBtn) hideBtn.disabled = hidden === total;
+    if (showBtn) showBtn.disabled = shown === total;
   }
 
   function createSidebarWidget() {
@@ -264,8 +322,8 @@
     if (botCount === 0) return;
 
     const total = botCount;
-    const collapsed = getCollapsedCount();
-    const expanded = total - collapsed;
+    const hidden = getCollapsedCount();
+    const shown = total - hidden;
 
     const widget = document.createElement('div');
     widget.id = 'gbc-sidebar-widget';
@@ -273,23 +331,19 @@
 
     widget.innerHTML = `
       <div class="gbc-sidebar-header">
-        <span class="gbc-sidebar-icon">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M8 0a8 8 0 110 16A8 8 0 018 0zM5.78 8.75a9.64 9.64 0 001.363 4.177c.255.426.542.832.857 1.215.245-.296.551-.705.857-1.215A9.64 9.64 0 0010.22 8.75H5.78zm4.44-1.5a9.64 9.64 0 00-1.363-4.177c-.307-.51-.612-.919-.857-1.215a9.927 9.927 0 00-.857 1.215A9.64 9.64 0 005.78 7.25h4.44zm-5.944 1.5H1.543a6.507 6.507 0 004.666 5.5c-.123-.181-.24-.365-.352-.552-.715-1.192-1.437-2.874-1.581-4.948zm-2.733-1.5h2.733c.144-2.074.866-3.756 1.58-4.948.12-.197.237-.381.353-.552a6.507 6.507 0 00-4.666 5.5zm10.181 1.5c-.144 2.074-.866 3.756-1.581 4.948-.111.187-.229.371-.352.552a6.507 6.507 0 004.666-5.5h-2.733zm2.733-1.5a6.507 6.507 0 00-4.666-5.5c.123.181.24.365.352.552.715 1.192 1.437 2.874 1.581 4.948h2.733z"/>
-          </svg>
-        </span>
-        <span class="gbc-sidebar-title">Bot Comments</span>
+        <span class="gbc-sidebar-icon">🤖</span>
+        <span class="gbc-sidebar-title">Slop Hider</span>
         <span class="gbc-sidebar-count">${total}</span>
       </div>
       <div class="gbc-sidebar-status">
-        ${collapsed} collapsed, ${expanded} expanded
+        ${hidden} hidden, ${shown} shown
       </div>
       <div class="gbc-sidebar-buttons">
-        <button class="gbc-btn gbc-btn-collapse" ${collapsed === total ? 'disabled' : ''}>
-          Collapse All
+        <button class="gbc-btn gbc-btn-collapse" ${hidden === total ? 'disabled' : ''}>
+          Hide All
         </button>
-        <button class="gbc-btn gbc-btn-expand" ${expanded === total ? 'disabled' : ''}>
-          Expand All
+        <button class="gbc-btn gbc-btn-expand" ${shown === total ? 'disabled' : ''}>
+          Show All
         </button>
       </div>
     `;

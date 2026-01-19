@@ -1,12 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "GitHub Bot Comment Collapser",
+  "name": "GitHub PR Slop Hider",
   "version": "1.0.0",
-  "description": "Automatically collapses comments from bots on GitHub PRs and issues",
+  "description": "Automatically hides bot comments on GitHub PRs and issues to reduce AI slop noise",
   "permissions": [],
-  "host_permissions": [
-    "https://github.com/*"
-  ],
+  "host_permissions": ["https://github.com/*"],
   "content_scripts": [
     {
       "matches": ["https://github.com/*"],
